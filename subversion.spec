@@ -1,5 +1,5 @@
 # set to zero to avoid running test suite
-%define make_check 1
+%define make_check 0
 
 %define with_java 1
 
@@ -17,7 +17,7 @@
 Summary: A Modern Concurrent Version Control System
 Name: subversion
 Version: 1.6.17
-Release: 5%{?dist}
+Release: 5%{?dist}.vvc
 License: ASL 1.1
 Group: Development/Tools
 URL: http://subversion.apache.org/
@@ -240,7 +240,7 @@ make %{?_smp_mflags} javahl
 
 %install
 rm -rf ${RPM_BUILD_ROOT}
-make install install-swig-py install-swig-pl-lib install-swig-rb \
+make install install-tools install-swig-py install-swig-pl-lib install-swig-rb \
         DESTDIR=$RPM_BUILD_ROOT %{swigdirs}
 %if %{with_java}
 make install-javahl-java install-javahl-lib javahl_javadir=%{_javadir} DESTDIR=$RPM_BUILD_ROOT
@@ -318,6 +318,9 @@ popd
 # Install bash completion
 install -Dpm 644 bash_completion \
         $RPM_BUILD_ROOT%{_sysconfdir}/bash_completion.d/%{name}
+
+mv $RPM_BUILD_ROOT%{_bindir}/svn-tools/svnmucc $RPM_BUILD_ROOT%{_bindir}/
+rm -rf $RPM_BUILD_ROOT%{_bindir}/svn-tools
 
 %find_lang %{name}
 
@@ -450,6 +453,9 @@ fi
 %{_mandir}/man1/svn2cl.1*
 
 %changelog
+* Mon Sep 05 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.6.17-5.vvc
+- Rebuild for RHEL6
+
 * Thu Jul 21 2011 Petr Sabata <contyk@redhat.com> - 1.6.17-5
 - Perl mass rebuild
 
