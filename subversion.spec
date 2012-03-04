@@ -2,6 +2,7 @@
 %define make_check 1
 
 %define with_java 1
+%define with_kwallet 1
 
 # set JDK path to build javahl; default for JPackage
 %define jdk_path /usr/lib/jvm/java
@@ -14,8 +15,8 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.2
-Release: 1%{?dist}.vvc
+Version: 1.7.3
+Release: 7%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
 URL: http://subversion.apache.org/
@@ -25,16 +26,16 @@ Source3: filter-requires.sh
 Source4: http://www.xsteve.at/prg/emacs/psvn.el
 Source5: psvn-init.el
 Source6: svnserve.init
+Source8: svnserve.sysconf
 Patch1: subversion-1.7.0-rpath.patch
 Patch2: subversion-1.7.0-pie.patch
 Patch3: subversion-1.7.0-kwallet.patch
+Patch5: subversion-1.7.3-hashorder.patch
 BuildRequires: autoconf, libtool, python, python-devel, texinfo, which
-BuildRequires: file-devel, qt-devel >= 4.0.0, pkgconfig
 BuildRequires: db4-devel >= 4.1.25, swig >= 1.3.24, gettext
 BuildRequires: apr-devel >= 1.3.0, apr-util-devel >= 1.3.0
 BuildRequires: neon-devel >= 0:0.24.7-1, cyrus-sasl-devel
-BuildRequires: sqlite-devel >= 3.4.0
-BuildRequires: gnome-keyring-devel, dbus-devel, kdelibs-devel >= 4.0.0
+BuildRequires: sqlite-devel >= 3.4.0, file-devel, qt4-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Provides: svn = %{version}-%{release}
 Requires: subversion-libs%{?_isa} = %{version}-%{release}
@@ -86,19 +87,23 @@ for developers interacting with the subversion package.
 Group: Development/Tools
 Summary: GNOME Keyring support for Subversion
 Requires: subversion%{?_isa} = %{version}-%{release}
+BuildRequires: gnome-keyring-devel, dbus-devel
 
 %description gnome
 The subversion-gnome package adds support for storing Subversion
 passwords in the GNOME Keyring.
 
+%if %{with_kwallet}
 %package kde
 Group: Development/Tools
 Summary: KDE Wallet support for Subversion
 Requires: subversion%{?_isa} = %{version}-%{release}
+BuildRequires: kdelibs4-devel
 
 %description kde
 The subversion-kde package adds support for storing Subversion
 passwords in the KDE Wallet.
+%endif
 
 %package -n mod_dav_svn
 Group: System Environment/Daemons
@@ -143,18 +148,26 @@ Summary: Ruby bindings to the Subversion libraries
 BuildRequires: ruby-devel >= 1.8.2, ruby >= 1.8.2
 Requires: subversion%{?_isa} = %{version}-%{release}
 Conflicts: ruby-libs%{?_isa} < 1.8.2
+### this should not be hard-coded!
 Requires: ruby(abi) = 1.8
 
 %description ruby
 This package includes the Ruby bindings to the Subversion libraries.
+
+%package tools
+Group: Development/Tools
+Summary: Supplementary tools for Subversion
+Requires: subversion%{?_isa} = %{version}-%{release}
+
+%description tools
+This package includes supplementary tools for use with Subversion.
 
 %prep
 %setup -q
 %patch1 -p1 -b .rpath
 %patch2 -p1 -b .pie
 %patch3 -p1 -b .kwallet
-
-mv tools/client-side/bash_completion .
+%patch5 -p1 -b .hashorder
 
 %build
 # Regenerate the buildsystem, so that:
@@ -183,13 +196,14 @@ export CC=gcc CXX=g++ JAVA_HOME=%{jdk_path} CFLAGS="$RPM_OPT_FLAGS"
         --with-apxs=%{_sbindir}/apxs --disable-mod-activation \
         --disable-static --with-sasl=%{_prefix} \
         --disable-neon-version-check \
-	--disable-keychain \
         --with-gnome-keyring \
 %if %{with_java}
         --enable-javahl \
         --with-junit=%{_prefix}/share/java/junit.jar \
 %endif
+%if %{with_kwallet}
         --with-kwallet \
+%endif
         --with-berkeley-db || (cat config.log; exit 1)
 make %{?_smp_mflags} all tools
 make swig-py swig-py-lib %{swigdirs}
@@ -202,7 +216,7 @@ make javahl
 
 %install
 rm -rf ${RPM_BUILD_ROOT}
-make install install-tools install-swig-py install-swig-pl-lib install-swig-rb \
+make install install-swig-py install-swig-pl-lib install-swig-rb \
         DESTDIR=$RPM_BUILD_ROOT %{swigdirs}
 %if %{with_java}
 make install-javahl-java install-javahl-lib javahl_javadir=%{_javadir} DESTDIR=$RPM_BUILD_ROOT
@@ -220,6 +234,9 @@ install -m 644 $RPM_SOURCE_DIR/subversion.conf ${RPM_BUILD_ROOT}%{_sysconfdir}/h
 mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
 install -p -m 755 $RPM_SOURCE_DIR/svnserve.init \
         $RPM_BUILD_ROOT/etc/rc.d/init.d/svnserve
+mkdir -p $RPM_BUILD_ROOT/etc/sysconfig
+install -p -m 544 $RPM_SOURCE_DIR/svnserve.sysconf \
+        $RPM_BUILD_ROOT/etc/sysconfig/svnserve
 
 # Remove unpackaged files
 rm -rf ${RPM_BUILD_ROOT}%{_includedir}/subversion-*/*.txt \
@@ -248,7 +265,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libsvn_swig_*.{so,la,a}
 rm -f ${RPM_BUILD_ROOT}%{ruby_sitearch}/svn/ext/*.*a
 
 # Trim what goes in docdir
-rm -rf tools/*/*.in tools/test-scripts tools/buildbot tools/dist
+rm -rf tools/*/*.in
 
 # Install psvn for emacs and xemacs
 for f in emacs/site-lisp xemacs/site-packages/lisp; do
@@ -270,13 +287,20 @@ sed -i "/^dependency_libs/{
      }"  $RPM_BUILD_ROOT%{_libdir}/*.la
 
 # Install bash completion
-install -Dpm 644 bash_completion \
+install -Dpm 644 tools/client-side/bash_completion \
         $RPM_BUILD_ROOT%{_sysconfdir}/bash_completion.d/%{name}
 
-mv $RPM_BUILD_ROOT%{_bindir}/svn-tools/svnmucc $RPM_BUILD_ROOT%{_bindir}/
-rm -rf $RPM_BUILD_ROOT%{_bindir}/svn-tools
+# Install tools ex diff*
+make install-tools DESTDIR=$RPM_BUILD_ROOT toolsdir=%{_bindir}
+rm -f $RPM_BUILD_ROOT%{_bindir}/diff*
+
+for f in svn-populate-node-origins-index svn-rep-sharing-stats svnauthz-validate svnmucc svnraisetreeconflict; do
+    echo %{_bindir}/$f
+done | tee tools.files | sed 's/^/%%exclude /' > exclude.tools.files
 
 %find_lang %{name}
+
+cat %{name}.lang exclude.tools.files >> %{name}.files
 
 %if %{make_check}
 %check
@@ -284,7 +308,11 @@ export LANG=C LC_ALL=C
 export LD_LIBRARY_PATH=$RPM_BUILD_ROOT%{_libdir}
 export MALLOC_PERTURB_=171 MALLOC_CHECK_=3
 export LIBC_FATAL_STDERR_=1
-make check check-swig-pl check-swig-py CLEANUP=yes
+if ! make check check-swig-pl check-swig-py CLEANUP=yes; then
+   : Test suite failure.
+   cat fails.log
+   exit 1
+fi
 # check-swig-rb omitted: it runs svnserve
 %if %{with_java}
 make check-javahl
@@ -322,18 +350,23 @@ fi
 %postun javahl -p /sbin/ldconfig
 %endif
 
-%files -f %{name}.lang
+%files -f %{name}.files
 %defattr(-,root,root)
 %doc BUGS COMMITTERS LICENSE NOTICE INSTALL README CHANGES
-%doc tools mod_authz_svn-INSTALL
+%doc tools/hook-scripts tools/backup tools/bdb tools/examples tools/xslt
+%doc mod_authz_svn-INSTALL
 %{_bindir}/*
 %{_mandir}/man*/*
 %{_sysconfdir}/rc.d/init.d/svnserve
 %{_datadir}/emacs/site-lisp/*.el
 %{_datadir}/xemacs/site-packages/lisp/*.el
 %{_sysconfdir}/bash_completion.d
+%config(noreplace) %{_sysconfdir}/sysconfig/svnserve
 %dir %{_sysconfdir}/subversion
 %exclude %{_mandir}/man*/*::*
+
+%files tools -f tools.files
+%defattr(-,root,root)
 
 %files libs
 %defattr(-,root,root)
@@ -341,7 +374,9 @@ fi
 %{_libdir}/libsvn_*.so.*
 %exclude %{_libdir}/libsvn_swig_perl*
 %exclude %{_libdir}/libsvn_swig_ruby*
+%if %{with_kwallet}
 %exclude %{_libdir}/libsvn_auth_kwallet*
+%endif
 %exclude %{_libdir}/libsvn_auth_gnome*
 
 %files python
@@ -353,9 +388,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/libsvn_auth_gnome_keyring-*.so.*
 
+%if %{with_kwallet}
 %files kde
 %defattr(-,root,root)
 %{_libdir}/libsvn_auth_kwallet-*.so.*
+%endif
 
 %files devel
 %defattr(-,root,root)
@@ -370,8 +407,7 @@ fi
 %files -n mod_dav_svn
 %defattr(-,root,root)
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/subversion.conf
-%{_libdir}/httpd/modules/mod_dav_svn.so
-%{_libdir}/httpd/modules/mod_authz_svn.so
+%{_libdir}/httpd/modules/mod_*.so
 
 %files perl
 %defattr(-,root,root,-)
@@ -393,11 +429,55 @@ fi
 %endif
 
 %changelog
-* Tue Dec 06 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.7.2-1.vvc
-- update to 1.7.2
+* Sun Mar 04 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.3-7.vvc
+- port to RHEL6
 
-* Thu Nov 24 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.7.1-1
+* Thu Mar  1 2012 Joe Orton <jorton@redhat.com> - 1.7.3-7
+- re-enable kwallet (#791031)
+
+* Wed Feb 29 2012 Joe Orton <jorton@redhat.com> - 1.7.3-6
+- update psvn
+
+* Wed Feb 29 2012 Joe Orton <jorton@redhat.com> - 1.7.3-5
+- add tools subpackage (#648015)
+
+* Tue Feb 28 2012 Joe Orton <jorton@redhat.com> - 1.7.3-4
+- trim contents of doc dic (#746433)
+
+* Tue Feb 28 2012 Joe Orton <jorton@redhat.com> - 1.7.3-3
+- re-enable test suite
+
+* Tue Feb 28 2012 Joe Orton <jorton@redhat.com> - 1.7.3-2
+- add upstream test suite fixes for APR hash change (r1293602, r1293811)
+- use ruby vendorlib directory (#798203)
+- convert svnserve to systemd (#754074)
+
+* Tue Feb 28 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org>
+- Rebuilt for c++ ABI breakage
+
+* Mon Feb 13 2012 Joe Orton <jorton@redhat.com> - 1.7.3-1
+- update to 1.7.3
+- ship, enable mod_dontdothat
+
+* Mon Feb 13 2012 Joe Orton <jorton@redhat.com> - 1.7.2-2
+- require ruby 1.9.1 abi
+
+* Thu Feb  9 2012 Joe Orton <jorton@redhat.com> - 1.7.2-1
+- update to 1.7.2
+- add Vincent Batts' Ruby 1.9 fixes from dev@
+
+* Sun Feb  5 2012 Peter Robinson <pbrobinson@fedoraproject.org> - 1.7.1-3
+- fix gnome-keyring build deps 
+
+* Sat Jan 14 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.7.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Mon Nov 28 2011 Joe Orton <jorton@redhat.com> - 1.7.1-1
 - update to 1.7.1
+- (temporarily) disable failing kwallet support
+
+* Sun Nov 27 2011 Ville Skyttä <ville.skytta@iki.fi> - 1.7.0-3
+- Build with libmagic support.
 
 * Sat Oct 15 2011 Ville Skyttä <ville.skytta@iki.fi> - 1.7.0-2
 - Fix apr Conflicts syntax in -libs.
