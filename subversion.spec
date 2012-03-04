@@ -1,5 +1,5 @@
 # set to zero to avoid running test suite
-%define make_check 0
+%define make_check 1
 
 %define with_java 1
 
@@ -12,13 +12,11 @@
 
 %{!?python_sitearch: %define python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
 
-%global svn2cl_version 0.11
-
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.6.17
-Release: 5%{?dist}.vvc
-License: ASL 1.1
+Version: 1.7.2
+Release: 1%{?dist}.vvc
+License: ASL 2.0
 Group: Development/Tools
 URL: http://subversion.apache.org/
 Source0: http://subversion.tigris.org/downloads/subversion-%{version}.tar.bz2
@@ -27,15 +25,11 @@ Source3: filter-requires.sh
 Source4: http://www.xsteve.at/prg/emacs/psvn.el
 Source5: psvn-init.el
 Source6: svnserve.init
-# http://bugs.debian.org/546990
-Patch0: subversion-1.6.5-newlines.patch
-Patch2: subversion-1.6.0-deplibs.patch
-Patch3: subversion-1.6.1-rpath.patch
-Patch6: subversion-1.6.11-pie.patch
-Patch8: subversion-1.6.6-kwallet.patch
-Patch9: subversion-1.6.12-disable-client-test.patch
-Patch10: subversion-MakeMaker.patch
+Patch1: subversion-1.7.0-rpath.patch
+Patch2: subversion-1.7.0-pie.patch
+Patch3: subversion-1.7.0-kwallet.patch
 BuildRequires: autoconf, libtool, python, python-devel, texinfo, which
+BuildRequires: file-devel, qt-devel >= 4.0.0, pkgconfig
 BuildRequires: db4-devel >= 4.1.25, swig >= 1.3.24, gettext
 BuildRequires: apr-devel >= 1.3.0, apr-util-devel >= 1.3.0
 BuildRequires: neon-devel >= 0:0.24.7-1, cyrus-sasl-devel
@@ -64,7 +58,7 @@ compelling replacement for CVS.
 Group: Development/Tools
 Summary: Libraries for Subversion Version Control system
 # APR 1.3.x interfaces are required
-Conflicts: apr%{?_isa}< 1.3.0
+Conflicts: apr%{?_isa} < 1.3.0
 
 %description libs
 The subversion-libs package includes the essential shared libraries
@@ -154,44 +148,11 @@ Requires: ruby(abi) = 1.8
 %description ruby
 This package includes the Ruby bindings to the Subversion libraries.
 
-%package svn2cl
-Group: Development/Tools
-Summary: Create a ChangeLog from a Subversion log
-License: BSD
-# -5: fake release for the Obsoletes to work
-Provides: svn2cl = %{svn2cl_version}-5
-Obsoletes: svn2cl < 0.11-4
-BuildArch: noarch
-Requires: libxslt
-Requires: subversion = %{version}
-
-%description svn2cl
-svn2cl is a simple XSL transformation and shell script wrapper for
-generating a classic GNU-style ChangeLog from a subversion repository
-log.  It is made from several changelog-like scripts using common XSLT
-constructs found in different places.
-
 %prep
 %setup -q
-cd contrib/client-side/svn2cl
-%patch0 -p1 -b .newlines
-cd ../../..
-%patch2 -p1 -b .deplibs
-%patch3 -p1 -b .rpath
-%patch6 -p1 -b .pie
-%patch8 -p1 -b .kwallet
-%patch9 -p1 -b .disable-client-test
-%patch10 -p1 -b .eemm
-
-sed -i -e 's|^XSL="$dir/|XSL="%{_datadir}/svn2cl/|' \
-        contrib/client-side/svn2cl/svn2cl.sh
-# Sanity check svn2cl_version
-v=$(contrib/client-side/svn2cl/svn2cl.sh -V | sed -n '1{s/.* //;p;}')
-if [ "$v" != "%{svn2cl_version}" ]; then
-        echo -n "ERROR: svn2cl_version not up to date in specfile: "
-        echo "'$v' <> '%{svn2cl_version}'"
-        exit 1
-fi
+%patch1 -p1 -b .rpath
+%patch2 -p1 -b .pie
+%patch3 -p1 -b .kwallet
 
 mv tools/client-side/bash_completion .
 
@@ -222,6 +183,7 @@ export CC=gcc CXX=g++ JAVA_HOME=%{jdk_path} CFLAGS="$RPM_OPT_FLAGS"
         --with-apxs=%{_sbindir}/apxs --disable-mod-activation \
         --disable-static --with-sasl=%{_prefix} \
         --disable-neon-version-check \
+	--disable-keychain \
         --with-gnome-keyring \
 %if %{with_java}
         --enable-javahl \
@@ -229,13 +191,13 @@ export CC=gcc CXX=g++ JAVA_HOME=%{jdk_path} CFLAGS="$RPM_OPT_FLAGS"
 %endif
         --with-kwallet \
         --with-berkeley-db || (cat config.log; exit 1)
-make %{?_smp_mflags} all
+make %{?_smp_mflags} all tools
 make swig-py swig-py-lib %{swigdirs}
 make swig-pl swig-pl-lib swig-rb swig-rb-lib
 %if %{with_java}
 # javahl-javah does not parallel-make with javahl
-make javahl-java javahl-javah
-make %{?_smp_mflags} javahl
+#make javahl-java javahl-javah
+make javahl
 %endif
 
 %install
@@ -257,7 +219,7 @@ install -m 644 $RPM_SOURCE_DIR/subversion.conf ${RPM_BUILD_ROOT}%{_sysconfdir}/h
 # Install SysV init script
 mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
 install -p -m 755 $RPM_SOURCE_DIR/svnserve.init \
-	$RPM_BUILD_ROOT/etc/rc.d/init.d/svnserve
+        $RPM_BUILD_ROOT/etc/rc.d/init.d/svnserve
 
 # Remove unpackaged files
 rm -rf ${RPM_BUILD_ROOT}%{_includedir}/subversion-*/*.txt \
@@ -307,14 +269,6 @@ sed -i "/^dependency_libs/{
      s,%{_libdir}/lib[^a][^p][^r][^ ']*.la, ,g;
      }"  $RPM_BUILD_ROOT%{_libdir}/*.la
 
-# Install svn2cl
-pushd contrib/client-side/svn2cl
-install -Dpm 755 svn2cl.sh $RPM_BUILD_ROOT%{_bindir}/svn2cl
-install -dm 755 $RPM_BUILD_ROOT%{_datadir}/svn2cl
-install -pm 644 *.xsl $RPM_BUILD_ROOT%{_datadir}/svn2cl
-install -Dpm 644 svn2cl.1 $RPM_BUILD_ROOT%{_mandir}/man1/svn2cl.1
-popd
-
 # Install bash completion
 install -Dpm 644 bash_completion \
         $RPM_BUILD_ROOT%{_sysconfdir}/bash_completion.d/%{name}
@@ -346,8 +300,8 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %preun
 if [ $1 = 0 ]; then
-	/sbin/service svnserve stop > /dev/null 2>&1
-	/sbin/chkconfig --del svnserve
+        /sbin/service svnserve stop > /dev/null 2>&1
+        /sbin/chkconfig --del svnserve
 fi
 
 %post libs -p /sbin/ldconfig
@@ -370,15 +324,10 @@ fi
 
 %files -f %{name}.lang
 %defattr(-,root,root)
-%doc BUGS COMMITTERS COPYING HACKING INSTALL README CHANGES
-%doc tools subversion/LICENSE mod_authz_svn-INSTALL
-%doc contrib/client-side/svn_load_dirs/{*.pl,*.example,*.README}
-%doc contrib/client-side/svnmerge/*.{README,py}
-%doc contrib/client-side/wcgrep
+%doc BUGS COMMITTERS LICENSE NOTICE INSTALL README CHANGES
+%doc tools mod_authz_svn-INSTALL
 %{_bindir}/*
-%exclude %{_bindir}/svn2cl
 %{_mandir}/man*/*
-%exclude %{_mandir}/man1/svn2cl.1*
 %{_sysconfdir}/rc.d/init.d/svnserve
 %{_datadir}/emacs/site-lisp/*.el
 %{_datadir}/xemacs/site-packages/lisp/*.el
@@ -388,7 +337,7 @@ fi
 
 %files libs
 %defattr(-,root,root)
-%doc subversion/LICENSE
+%doc LICENSE NOTICE
 %{_libdir}/libsvn_*.so.*
 %exclude %{_libdir}/libsvn_swig_perl*
 %exclude %{_libdir}/libsvn_swig_ruby*
@@ -443,18 +392,21 @@ fi
 %{_javadir}/svn-javahl.jar
 %endif
 
-%files svn2cl
-%defattr(-,root,root,-)
-%doc contrib/client-side/svn2cl/NEWS contrib/client-side/svn2cl/README
-%doc contrib/client-side/svn2cl/TODO contrib/client-side/svn2cl/authors.xml
-%doc contrib/client-side/svn2cl/svn2html.css
-%{_bindir}/svn2cl
-%{_datadir}/svn2cl/
-%{_mandir}/man1/svn2cl.1*
-
 %changelog
-* Mon Sep 05 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.6.17-5.vvc
-- Rebuild for RHEL6
+* Tue Dec 06 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.7.2-1.vvc
+- update to 1.7.2
+
+* Thu Nov 24 2011 Vadym Chepkov <vchepkov@gmail.com> - 1.7.1-1
+- update to 1.7.1
+
+* Sat Oct 15 2011 Ville Skyttä <ville.skytta@iki.fi> - 1.7.0-2
+- Fix apr Conflicts syntax in -libs.
+- Fix obsolete chown syntax in subversion.conf.
+- Fix use of spaces vs tabs in specfile.
+
+* Wed Oct 12 2011 Joe Orton <jorton@redhat.com> - 1.7.0-1
+- update to 1.7.0
+- drop svn2cl (no longer shipped in upstream tarball)
 
 * Thu Jul 21 2011 Petr Sabata <contyk@redhat.com> - 1.6.17-5
 - Perl mass rebuild
