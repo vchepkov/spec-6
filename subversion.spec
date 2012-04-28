@@ -15,8 +15,8 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.3
-Release: 7%{?dist}.vvc
+Version: 1.7.4
+Release: 1%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
 URL: http://subversion.apache.org/
@@ -30,7 +30,8 @@ Source8: svnserve.sysconf
 Patch1: subversion-1.7.0-rpath.patch
 Patch2: subversion-1.7.0-pie.patch
 Patch3: subversion-1.7.0-kwallet.patch
-Patch5: subversion-1.7.3-hashorder.patch
+Patch5: subversion-1.7.4-hashorder.patch
+Patch6: subversion-1.7.4-httpd24.patch
 BuildRequires: autoconf, libtool, python, python-devel, texinfo, which
 BuildRequires: db4-devel >= 4.1.25, swig >= 1.3.24, gettext
 BuildRequires: apr-devel >= 1.3.0, apr-util-devel >= 1.3.0
@@ -168,6 +169,7 @@ This package includes supplementary tools for use with Subversion.
 %patch2 -p1 -b .pie
 %patch3 -p1 -b .kwallet
 %patch5 -p1 -b .hashorder
+%patch6 -p1 -b .httpd24
 
 %build
 # Regenerate the buildsystem, so that:
@@ -429,8 +431,12 @@ fi
 %endif
 
 %changelog
-* Sun Mar 04 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.3-7.vvc
+* Wed Mar 14 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.4-1.vvc
 - port to RHEL6
+
+* Mon Mar 12 2012 Joe Orton <jorton@redhat.com> - 1.7.4-1
+- update to 1.7.4
+- fix build with httpd 2.4
 
 * Thu Mar  1 2012 Joe Orton <jorton@redhat.com> - 1.7.3-7
 - re-enable kwallet (#791031)
