@@ -15,7 +15,7 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.4
+Version: 1.7.5
 Release: 1%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
@@ -30,8 +30,8 @@ Source8: svnserve.sysconf
 Patch1: subversion-1.7.0-rpath.patch
 Patch2: subversion-1.7.0-pie.patch
 Patch3: subversion-1.7.0-kwallet.patch
-Patch5: subversion-1.7.4-hashorder.patch
-Patch6: subversion-1.7.4-httpd24.patch
+Patch7: subversion-1.7.4-kwallet2.patch
+Patch8: subversion-1.7.4-sqlitever.patch
 BuildRequires: autoconf, libtool, python, python-devel, texinfo, which
 BuildRequires: db4-devel >= 4.1.25, swig >= 1.3.24, gettext
 BuildRequires: apr-devel >= 1.3.0, apr-util-devel >= 1.3.0
@@ -168,8 +168,8 @@ This package includes supplementary tools for use with Subversion.
 %patch1 -p1 -b .rpath
 %patch2 -p1 -b .pie
 %patch3 -p1 -b .kwallet
-%patch5 -p1 -b .hashorder
-%patch6 -p1 -b .httpd24
+%patch7 -p1 -b .kwallet2
+%patch8 -p1 -b .sqlitever
 
 %build
 # Regenerate the buildsystem, so that:
@@ -177,7 +177,8 @@ This package includes supplementary tools for use with Subversion.
 #  2) the swig bindings are regenerated using the system swig
 # (2) is not ideal since typically upstream test with a different
 # swig version
-./autogen.sh --release
+# This PATH order makes the fugly test for libtoolize work...
+PATH=/usr/bin:$PATH ./autogen.sh --release
 
 # fix shebang lines, #111498
 perl -pi -e 's|/usr/bin/env perl -w|/usr/bin/perl -w|' tools/hook-scripts/*.pl.in
@@ -308,8 +309,8 @@ cat %{name}.lang exclude.tools.files >> %{name}.files
 %check
 export LANG=C LC_ALL=C
 export LD_LIBRARY_PATH=$RPM_BUILD_ROOT%{_libdir}
-export MALLOC_PERTURB_=171 MALLOC_CHECK_=3
-export LIBC_FATAL_STDERR_=1
+#export MALLOC_PERTURB_=171 MALLOC_CHECK_=3
+#export LIBC_FATAL_STDERR_=1
 if ! make check check-swig-pl check-swig-py CLEANUP=yes; then
    : Test suite failure.
    cat fails.log
@@ -431,6 +432,12 @@ fi
 %endif
 
 %changelog
+* Thu May 31 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.5-1.vvc
+- port to RHEL6
+
+* Tue May 22 2012 Joe Orton <jorton@redhat.com> - 1.7.5-1
+- update to 1.7.5
+
 * Wed Mar 14 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.4-1.vvc
 - port to RHEL6
 
