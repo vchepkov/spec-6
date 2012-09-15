@@ -3,7 +3,7 @@
 Summary: Mercurial -- a distributed SCM
 Name: mercurial
 Version: 2.3.1
-Release: 1%{?dist}
+Release: 1%{?dist}.vvc
 #Release: 1.rc1%{?dist}
 
 #%define upstreamversion %{version}-rc
@@ -113,8 +113,7 @@ mkdir -p $RPM_BUILD_ROOT%{emacs_lispdir}
 
 pushd contrib
 for file in mercurial.el mq.el; do
-  #emacs -batch -l mercurial.el --no-site-file -f batch-byte-compile $file
-  %{_emacs_bytecompile} $file
+  emacs -batch --no-init-file --no-site-file --eval '(progn (setq load-path (cons "." load-path)))' -f batch-byte-compile $file
   install -p -m 644 $file ${file}c $RPM_BUILD_ROOT%{emacs_lispdir}
   rm ${file}c
 done
@@ -162,7 +161,6 @@ rm -rf $RPM_BUILD_ROOT
 %doc %attr(644,root,root) %{_mandir}/man?/hg*.gz
 %doc %attr(644,root,root) contrib/*.svg contrib/sample.hgrc
 %config(noreplace) %{_sysconfdir}/bash_completion.d/mercurial.sh
-%{_datadir}/zsh/site-functions/_mercurial
 %{_bindir}/hg-ssh
 %dir %{_sysconfdir}/bash_completion.d/
 %dir %{_datadir}/zsh/
