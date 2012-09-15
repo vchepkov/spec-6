@@ -15,7 +15,7 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.5
+Version: 1.7.6
 Release: 1%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
@@ -432,6 +432,9 @@ fi
 %endif
 
 %changelog
+* Wed Aug 22 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.6-1.vvc
+- update to 1.7.6
+
 * Thu May 31 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.5-1.vvc
 - port to RHEL6
 
