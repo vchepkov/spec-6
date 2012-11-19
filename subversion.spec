@@ -15,12 +15,12 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.6
+Version: 1.7.7
 Release: 1%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
 URL: http://subversion.apache.org/
-Source0: http://subversion.tigris.org/downloads/subversion-%{version}.tar.bz2
+Source0: http://www.apache.org/dist/subversion/subversion-%{version}.tar.bz2
 Source1: subversion.conf
 Source3: filter-requires.sh
 Source4: http://www.xsteve.at/prg/emacs/psvn.el
@@ -432,6 +432,9 @@ fi
 %endif
 
 %changelog
+* Fri Oct 12 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.7-1.vvc
+- update to 1.7.7
+
 * Wed Aug 22 2012 Vadym Chepkov <vchepkov@gmail.com> - 1.7.6-1.vvc
 - update to 1.7.6
 
