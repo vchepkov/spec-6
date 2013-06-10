@@ -15,7 +15,7 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.9
+Version: 1.7.10
 Release: 1%{?dist}.vvc
 License: ASL 2.0
 Group: Development/Tools
@@ -149,8 +149,6 @@ Summary: Ruby bindings to the Subversion libraries
 BuildRequires: ruby-devel >= 1.8.2, ruby >= 1.8.2
 Requires: subversion%{?_isa} = %{version}-%{release}
 Conflicts: ruby-libs%{?_isa} < 1.8.2
-### this should not be hard-coded!
-Requires: ruby(abi) = 1.8
 
 %description ruby
 This package includes the Ruby bindings to the Subversion libraries.
@@ -198,6 +196,7 @@ export CC=gcc CXX=g++ JAVA_HOME=%{jdk_path} CFLAGS="$RPM_OPT_FLAGS"
         --with-ruby-sitedir=%{ruby_sitearch} \
         --with-apxs=%{_sbindir}/apxs --disable-mod-activation \
         --disable-static --with-sasl=%{_prefix} \
+        --with-libmagic=%{_prefix} \
         --disable-neon-version-check \
         --with-gnome-keyring \
 %if %{with_java}
@@ -309,8 +308,8 @@ cat %{name}.lang exclude.tools.files >> %{name}.files
 %check
 export LANG=C LC_ALL=C
 export LD_LIBRARY_PATH=$RPM_BUILD_ROOT%{_libdir}
-#export MALLOC_PERTURB_=171 MALLOC_CHECK_=3
-#export LIBC_FATAL_STDERR_=1
+export MALLOC_PERTURB_=171 MALLOC_CHECK_=3
+export LIBC_FATAL_STDERR_=1
 if ! make check check-swig-pl check-swig-py CLEANUP=yes; then
    : Test suite failure.
    cat fails.log
@@ -432,6 +431,9 @@ fi
 %endif
 
 %changelog
+* Sun Jun 09 2013 Vadym Chepkov <vchepkov@gmail.com> - 1.7.10-1.vvc
+- update to 1.7.10
+
 * Sat Apr 06 2013 Vadym Chepkov <vchepkov@gmail.com> - 1.7.9-1.vvc
 - update to 1.7.9
 
