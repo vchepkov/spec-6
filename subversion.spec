@@ -16,7 +16,7 @@
 Summary: A Modern Concurrent Version Control System
 Name: subversion
 Version: 1.7.13
-Release: 1%{?dist}.vvc
+Release: 2%{?dist}.vvc
 Epoch: 1
 License: ASL 2.0
 Group: Development/Tools
@@ -40,7 +40,7 @@ BuildRequires: neon-devel >= 0:0.24.7-1, cyrus-sasl-devel
 BuildRequires: sqlite-devel >= 3.4.0, file-devel, qt4-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Provides: svn = %{version}-%{release}
-Requires: subversion-libs%{?_isa} = %{version}-%{release}
+Requires: subversion-libs%{?_isa} = %{epoch}:%{version}-%{release}
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig, /sbin/service
 
@@ -78,7 +78,7 @@ Subversion libraries.
 %package devel
 Group: Development/Tools
 Summary: Development package for the Subversion libraries
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 Requires: apr-devel%{?_isa}, apr-util-devel%{?_isa}
 
 %description devel
@@ -88,7 +88,7 @@ for developers interacting with the subversion package.
 %package gnome
 Group: Development/Tools
 Summary: GNOME Keyring support for Subversion
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 BuildRequires: gnome-keyring-devel, dbus-devel
 
 %description gnome
@@ -99,7 +99,7 @@ passwords in the GNOME Keyring.
 %package kde
 Group: Development/Tools
 Summary: KDE Wallet support for Subversion
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 BuildRequires: kdelibs4-devel
 
 %description kde
@@ -111,7 +111,7 @@ passwords in the KDE Wallet.
 Group: System Environment/Daemons
 Summary: Apache httpd module for Subversion server
 Requires: httpd-mmn = %(cat %{_includedir}/httpd/.mmn || echo missing)
-Requires: subversion-libs%{?_isa} = %{version}-%{release}
+Requires: subversion-libs%{?_isa} = %{epoch}:%{version}-%{release}
 BuildRequires: httpd-devel >= 2.0.45
 
 %description -n mod_dav_svn
@@ -124,7 +124,7 @@ Summary: Perl bindings to the Subversion libraries
 BuildRequires: perl-devel >= 2:5.8.0, perl(ExtUtils::MakeMaker)
 BuildRequires: perl(Test::More), perl(ExtUtils::Embed)
 Requires: %(eval `perl -V:version`; echo "perl(:MODULE_COMPAT_$version)")
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description perl
 This package includes the Perl bindings to the Subversion libraries.
@@ -133,7 +133,7 @@ This package includes the Perl bindings to the Subversion libraries.
 %package javahl
 Group: Development/Libraries
 Summary: JNI bindings to the Subversion libraries
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 BuildRequires: java-devel-openjdk
 # JAR repacking requires both zip and unzip in the buildroot
 BuildRequires: zip, unzip
@@ -148,7 +148,7 @@ This package includes the JNI bindings to the Subversion libraries.
 Group: Development/Libraries
 Summary: Ruby bindings to the Subversion libraries
 BuildRequires: ruby-devel >= 1.8.2, ruby >= 1.8.2
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 Conflicts: ruby-libs%{?_isa} < 1.8.2
 
 %description ruby
@@ -157,7 +157,7 @@ This package includes the Ruby bindings to the Subversion libraries.
 %package tools
 Group: Development/Tools
 Summary: Supplementary tools for Subversion
-Requires: subversion%{?_isa} = %{version}-%{release}
+Requires: subversion%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description tools
 This package includes supplementary tools for use with Subversion.
@@ -432,6 +432,9 @@ fi
 %endif
 
 %changelog
+* Fri Sep 06 2013 Vadym Chepkov <vchepkov@gmail.com> - 1:1.7.13-2.vvc
+- fixed epoch
+
 * Fri Sep 06 2013 Vadym Chepkov <vchepkov@gmail.com> - 1.7.13-1.vvc
 - update to 1.7.13
 
