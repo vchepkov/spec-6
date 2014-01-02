@@ -1,14 +1,15 @@
 Name:           monit
 Version:        5.6
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
 Group:          Applications/Internet
 License:        GPLv3+
 URL:            http://www.tildeslash.com/monit
 Source0:        http://www.tildeslash.com/monit/dist/monit-%{version}.tar.gz
-Source1:        monit-sysv-initscript
+Source1:        monit.upstart
 Source2:        monit.logrotate
+Source3:        monit.pam
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  flex
@@ -17,10 +18,7 @@ BuildRequires:  pam-devel
 BuildRequires:  byacc
 BuildRequires:  bash
 
-Requires(post): /sbin/chkconfig
-Requires(preun): /sbin/chkconfig
-Requires(preun): /sbin/service
-Requires(postun): /sbin/service
+Requires(pre):  upstart
 
 %description
 monit is a utility for managing and monitoring, processes, files, directories
@@ -38,60 +36,104 @@ make %{?_smp_mflags}
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 
-install -p -D -m0755 %{SOURCE1} $RPM_BUILD_ROOT%{_initrddir}/monit
-install -p -D -m0600 monitrc $RPM_BUILD_ROOT%{_sysconfdir}/monitrc
+install -p -D -m0755 %{SOURCE1} $RPM_BUILD_ROOT%{_sysconfdir}/init/monit.conf
 install -p -D -m0755 monit $RPM_BUILD_ROOT%{_bindir}/monit
+
+mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/monit
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/spool/monit
 
 # Log file & logrotate config
 install -p -D -m0644 %{SOURCE2} $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/monit
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log
 install -m0600 /dev/null $RPM_BUILD_ROOT%{_localstatedir}/log/monit
 
+# PAM file
+
+install -p -D -m0644 %{SOURCE3} $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/monit
+
 # Let's include some good defaults
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/monit.d
 echo "
-# set daemon mode timeout to 1 minute
+# Set daemon mode timeout to 1 minute
 set daemon 60
+
+## Set the location of the Monit id file which stores the unique id for the
+## Monit instance. The id is generated and stored on first Monit start. By
+## default the file is placed in $HOME/.monit.id.
+
+set idfile %{_sharedstatedir}/monit/monit.id
+
+## Set the location of the Monit state file which saves monitoring states
+## on each cycle. By default the file is placed in $HOME/.monit.state. If
+## the state file is stored on a persistent filesystem, Monit will recover
+## the monitoring state across reboots. If it is on temporary filesystem, the
+## state will be lost on reboot which may be convenient in some situations.
+
+set statefile %{_sharedstatedir}/monit/monit.state
+
+## By default Monit will drop alert events if no mail servers are available.
+## If you want to keep the alerts for later delivery retry, you can use the
+## EVENTQUEUE statement. The base directory where undelivered alerts will be
+## stored is specified by the BASEDIR option. You can limit the maximal queue
+## size using the SLOTS option (if omitted, the queue is limited by space
+## available in the back end filesystem).
+
+set eventqueue
+    basedir %{_localstatedir}/spool/monit
+    slots 100
+
+## Set the list of mail servers for alert delivery. Multiple servers may be
+## specified using a comma separator. If the first mail server fails, Monit
+## will use the second mail server in the list and so on. By default Monit uses
+## port 25 - it is possible to override this with the PORT option.
+
+set mailserver localhost
+
 # Include all files from %{_sysconfdir}/monit.d/
-include %{_sysconfdir}/monit.d/*" >> $RPM_BUILD_ROOT%{_sysconfdir}/monitrc
+include %{_sysconfdir}/monit.d/*" > $RPM_BUILD_ROOT%{_sysconfdir}/monitrc
 
 echo "# log to monit.log
 set logfile /var/log/monit
 " > $RPM_BUILD_ROOT%{_sysconfdir}/monit.d/logging
 
-
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %post
-# This adds the proper /etc/rc*.d links for the script
-/sbin/chkconfig --add monit
+/sbin/initctl reload-configuration
 
 %preun
 if [ $1 = 0 ]; then
-        /sbin/service monit stop >/dev/null 2>&1
-        /sbin/chkconfig --del monit
+        /sbin/stop monit >/dev/null 2>&1 || :
 fi
 
 %postun
 if [ "$1" -ge "1" ]; then
-        /sbin/service monit condrestart >/dev/null 2>&1 || :
+        /sbin/restart monit >/dev/null 2>&1 || :
 fi
-
 
 %files
 %defattr(-,root,root,-)
 %doc CHANGES COPYING README 
-%config(noreplace) %{_sysconfdir}/monitrc
+%attr(600,-,-) %config(noreplace) %{_sysconfdir}/monitrc
 %config(noreplace) %{_sysconfdir}/monit.d/logging
 %config(noreplace) %{_sysconfdir}/logrotate.d/monit
+%config(noreplace) %{_sysconfdir}/pam.d/monit
+%config %{_sysconfdir}/init/monit.conf
 %ghost %{_localstatedir}/log/monit
 %{_sysconfdir}/monit.d/
-%{_initrddir}/monit
-%{_bindir}/%{name}
+%{_bindir}/monit
 %{_mandir}/man1/monit.1*
+%{_sharedstatedir}/monit
+%{_localstatedir}/spool/monit
 
 %changelog
+* Thu Jan 02 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.6-3
+- changed to upstart
+- secured default configuration
+- added PAM configuration
+
+
 * Thu Dec 12 2013 Vadym Chepkov <vchepkov@gmail.com> - 5.6-2
 - corrected config file name
 
