@@ -15,8 +15,8 @@
 
 Summary: A Modern Concurrent Version Control System
 Name: subversion
-Version: 1.7.13
-Release: 2%{?dist}.vvc
+Version: 1.7.16
+Release: 1%{?dist}.vvc
 Epoch: 1
 License: ASL 2.0
 Group: Development/Tools
@@ -432,6 +432,9 @@ fi
 %endif
 
 %changelog
+* Thu Feb 27 2014 Vadym Chepkov <vchepkov@gmail.com> - 1:1.7.16-1.vvc
+- upgrade to 1.7.16
+
 * Fri Sep 06 2013 Vadym Chepkov <vchepkov@gmail.com> - 1:1.7.13-2.vvc
 - fixed epoch
 
