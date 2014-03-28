@@ -1,6 +1,6 @@
 Name:           monit
-Version:        5.6
-Release:        3%{?dist}
+Version:        5.7
+Release:        1%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
 Group:          Applications/Internet
@@ -128,6 +128,9 @@ fi
 %{_localstatedir}/spool/monit
 
 %changelog
+* Tue Mar 25 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.7-1
+- update to 5.7
+
 * Thu Jan 02 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.6-3
 - changed to upstart
 - secured default configuration
