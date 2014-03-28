@@ -1,5 +1,5 @@
 Name:           monit
-Version:        5.7
+Version:        5.8
 Release:        1%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
@@ -128,6 +128,9 @@ fi
 %{_localstatedir}/spool/monit
 
 %changelog
+* Fri Mar 28 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8-1
+- update to 5.8
+
 * Tue Mar 25 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.7-1
 - update to 5.7
 
