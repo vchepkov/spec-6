@@ -1,15 +1,16 @@
 Name:           monit
-Version:        5.8
-Release:        2%{?dist}
+Version:        5.8.1
+Release:        1%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
 Group:          Applications/Internet
 License:        GPLv3+
 URL:            http://www.tildeslash.com/monit
 Source0:        http://www.tildeslash.com/monit/dist/monit-%{version}.tar.gz
-Source1:        monit.upstart
+Source1:        monit.init
 Source2:        monit.logrotate
 Source3:        monit.pam
+Patch1:         monit-no-startup-msg.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  flex
@@ -17,8 +18,12 @@ BuildRequires:  openssl-devel
 BuildRequires:  pam-devel
 BuildRequires:  byacc
 BuildRequires:  bash
+BuildRequires:  /usr/bin/pod2man
 
-Requires(pre):  upstart
+Requires(post): /sbin/chkconfig
+Requires(preun): /sbin/chkconfig
+Requires(preun): /sbin/service
+Requires(postun): /sbin/service
 
 %description
 monit is a utility for managing and monitoring, processes, files, directories
@@ -27,6 +32,7 @@ and can execute meaningful causal actions in error situations.
 
 %prep
 %setup -q
+%patch1 -p1 -b .nomsg
 
 %build
 %configure --disable-static
@@ -36,11 +42,13 @@ make %{?_smp_mflags}
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 
-install -p -D -m0755 %{SOURCE1} $RPM_BUILD_ROOT%{_sysconfdir}/init/monit.conf
+install -p -D -m0755 %{SOURCE1} $RPM_BUILD_ROOT%{_initrddir}/monit
 install -p -D -m0755 monit $RPM_BUILD_ROOT%{_bindir}/monit
 
 mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/monit
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/spool/monit
+
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/rpm-state
 
 # Log file & logrotate config
 install -p -D -m0644 %{SOURCE2} $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/monit
@@ -100,34 +108,48 @@ set logfile /var/log/monit
 rm -rf $RPM_BUILD_ROOT
 
 %post
-/sbin/initctl reload-configuration
+/sbin/chkconfig --add monit
 
 %preun
 if [ $1 = 0 ]; then
-        /sbin/stop monit >/dev/null 2>&1 || :
+        /sbin/service monit stop >/dev/null 2>&1
+        /sbin/chkconfig --del monit
 fi
 
 %postun
 if [ "$1" -ge "1" ]; then
-        /sbin/restart monit >/dev/null 2>&1 || :
+        /sbin/service monit condrestart >/dev/null 2>&1 || :
 fi
+
+%triggerun -- monit < 5.8.1-1
+/bin/ps -eo comm|grep -qw monit && touch %{_localstatedir}/lib/rpm-state/monit.running >/dev/null 2>&1 || :
+/sbin/stop monit >/dev/null 2>&1 || :
+
+%triggerpostun  -- monit < 5.8.1-1
+[ -e %{_localstatedir}/lib/rpm-state/monit.running ] && /sbin/service monit start >/dev/null 2>&1 || :
+rm -f %{_localstatedir}/lib/rpm-state/monit.running
 
 %files
 %defattr(-,root,root,-)
-%doc CHANGES COPYING README 
+%doc COPYING README
 %attr(600,-,-) %config(noreplace) %{_sysconfdir}/monitrc
 %config(noreplace) %{_sysconfdir}/monit.d/logging
 %config(noreplace) %{_sysconfdir}/logrotate.d/monit
 %config(noreplace) %{_sysconfdir}/pam.d/monit
-%{_sysconfdir}/init/monit.conf
 %ghost %{_localstatedir}/log/monit
 %{_sysconfdir}/monit.d/
+%{_initrddir}/monit
 %{_bindir}/monit
 %{_mandir}/man1/monit.1*
 %{_sharedstatedir}/monit
 %{_localstatedir}/spool/monit
+%{_localstatedir}/lib/rpm-state
 
 %changelog
+* Thu May 15 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8.1-1
+- update to 5.8.1
+- switched from upstart to init due to incompatibility
+
 * Thu May 01 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8-2
 - added workaround for upstart bug, preventing process to stop
 
