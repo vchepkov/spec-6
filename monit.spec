@@ -1,6 +1,6 @@
 Name:           monit
 Version:        5.8
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
 Group:          Applications/Internet
@@ -119,7 +119,7 @@ fi
 %config(noreplace) %{_sysconfdir}/monit.d/logging
 %config(noreplace) %{_sysconfdir}/logrotate.d/monit
 %config(noreplace) %{_sysconfdir}/pam.d/monit
-%config %{_sysconfdir}/init/monit.conf
+%{_sysconfdir}/init/monit.conf
 %ghost %{_localstatedir}/log/monit
 %{_sysconfdir}/monit.d/
 %{_bindir}/monit
@@ -128,6 +128,9 @@ fi
 %{_localstatedir}/spool/monit
 
 %changelog
+* Thu May 01 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8-2
+- added workaround for upstart bug, preventing process to stop
+
 * Fri Mar 28 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8-1
 - update to 5.8
 
