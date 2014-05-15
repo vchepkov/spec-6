@@ -1,6 +1,6 @@
 Name:           monit
 Version:        5.8.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Manages and monitors processes, files, directories and devices
 
 Group:          Applications/Internet
@@ -97,12 +97,18 @@ set eventqueue
 
 set mailserver localhost
 
-# Include all files from %{_sysconfdir}/monit.d/
-include %{_sysconfdir}/monit.d/*" > $RPM_BUILD_ROOT%{_sysconfdir}/monitrc
+# Include .conf files from %{_sysconfdir}/monit.d/
+include %{_sysconfdir}/monit.d/*.conf" > $RPM_BUILD_ROOT%{_sysconfdir}/monitrc
+
+echo "# default access
+set httpd port 2812 and
+    use address localhost  # only accept connection from localhost
+    allow localhost        # allow localhost to connect to the server
+" > $RPM_BUILD_ROOT%{_sysconfdir}/monit.d/auth.conf
 
 echo "# log to monit.log
 set logfile /var/log/monit
-" > $RPM_BUILD_ROOT%{_sysconfdir}/monit.d/logging
+" > $RPM_BUILD_ROOT%{_sysconfdir}/monit.d/logging.conf
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -131,13 +137,14 @@ rm -f %{_localstatedir}/lib/rpm-state/monit.running
 
 %files
 %defattr(-,root,root,-)
-%doc COPYING README
+%doc COPYING README monitrc
 %attr(600,-,-) %config(noreplace) %{_sysconfdir}/monitrc
-%config(noreplace) %{_sysconfdir}/monit.d/logging
 %config(noreplace) %{_sysconfdir}/logrotate.d/monit
 %config(noreplace) %{_sysconfdir}/pam.d/monit
 %ghost %{_localstatedir}/log/monit
-%{_sysconfdir}/monit.d/
+%attr(700,-,-) %{_sysconfdir}/monit.d
+%attr(600,-,-) %config(noreplace) %{_sysconfdir}/monit.d/auth.conf
+%attr(600,-,-) %config(noreplace) %{_sysconfdir}/monit.d/logging.conf
 %{_initrddir}/monit
 %{_bindir}/monit
 %{_mandir}/man1/monit.1*
@@ -146,6 +153,9 @@ rm -f %{_localstatedir}/lib/rpm-state/monit.running
 %{_localstatedir}/lib/rpm-state
 
 %changelog
+* Thu May 15 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8.1-2
+- added default auth file
+
 * Thu May 15 2014 Vadym Chepkov <vchepkov@gmail.com> - 5.8.1-1
 - update to 5.8.1
 - switched from upstart to init due to incompatibility
